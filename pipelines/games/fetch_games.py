@@ -7,6 +7,8 @@ from cfbd.models.season_type import SeasonType
 from cfbd.rest import ApiException
 from pprint import pprint
 from dotenv import load_dotenv
+import pandas as pd
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -31,11 +33,23 @@ configuration = cfbd.Configuration(
 with cfbd.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cfbd.GamesApi(api_client)
-    year = 2024 # int | Required year filter (except when id is specified) (optional)
+    classification = cfbd.DivisionClassification("fbs")
+    start_year = 2004
+    end_year = 2025
 
-    try:
-        api_response = api_instance.get_games(year=year)
-        print("The response of GamesApi->get_games:\n")
-        pprint(api_response)
-    except Exception as e:
-        print("Exception when calling GamesApi->get_games: %s\n" % e)
+    # Initialize empty dataframe
+    df = pd.DataFrame()
+
+    # Loops from start_year through end_year and append new dataframe
+    for year in range(start_year,end_year):
+        try:
+            logging.info("Calling Games API for year {}".format(year))
+            api_response = api_instance.get_games(year=year, classification=classification)
+            games_dicts = [g.to_dict() for g in api_response]
+            new_df = pd.DataFrame(games_dicts)
+            df = pd.concat([df, new_df], ignore_index=True)
+        except Exception as e:
+            logging.error("Exception when calling GamesApi->get_games: %s\n" % e)
+    
+    # Save to CSV
+    df.to_csv("data/raw/games_raw.csv", index=False)
