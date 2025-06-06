@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import pickle
 import numpy as np
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 
 
 # Get the path to the model file relative to this script
@@ -13,6 +14,14 @@ with open(model_path, "rb") as f:
     model = pickle.load(f)
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 # Define input schema
 class EloInput(BaseModel):
