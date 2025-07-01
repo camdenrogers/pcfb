@@ -2,3 +2,5 @@
 .env
 data/
 terraform/.terraform*
+pcfb-frontend/node_modules
+pcfb-frontend/package-lock.json
