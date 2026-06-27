@@ -1,0 +1,29 @@
+# misc
+.DS_Store
+*.pem
+
+# env files
+.env*
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# pcfb-ui (Next.js)
+pcfb-ui/node_modules
+pcfb-ui/.pnp
+pcfb-ui/.pnp.*
+pcfb-ui/.yarn/*
+!pcfb-ui/.yarn/patches
+!pcfb-ui/.yarn/plugins
+!pcfb-ui/.yarn/releases
+!pcfb-ui/.yarn/versions
+pcfb-ui/coverage
+pcfb-ui/.next/
+pcfb-ui/out/
+pcfb-ui/build
+pcfb-ui/.vercel
+pcfb-ui/*.tsbuildinfo
+pcfb-ui/next-env.d.ts
