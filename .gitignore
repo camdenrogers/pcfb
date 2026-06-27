@@ -27,3 +27,6 @@ pcfb-ui/build
 pcfb-ui/.vercel
 pcfb-ui/*.tsbuildinfo
 pcfb-ui/next-env.d.ts
+
+# API
+pcfb-api/data/
