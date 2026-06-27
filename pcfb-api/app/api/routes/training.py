@@ -24,7 +24,7 @@ def run_refresh():
         job_status["refresh"]["status"] = "error"
         job_status["refresh"]["message"] = str(e)
     finally:
-        job_status["refresh"]["last_run"] = datetime.utcnow().isoformat()
+        job_status["refresh"]["last_run"] = datetime.utcnow().isoformat() + "Z"
 
 def run_retrain():
     job_status["retrain"]["status"] = "running"

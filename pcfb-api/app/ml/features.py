@@ -60,7 +60,7 @@ def build_features(years: list[int]) -> pd.DataFrame:
         df = df.merge(sp_away, on="awayTeam", how="left")
 
         # Feature engineering
-        df["spRatingDiff"] = df["homeSPRating"] - df["awaySPRating"]
+        df["spRatingDiff"] = df["awaySPRating"] - df["homeSPRating"]
         df["eloDiff"] = df["homePregameElo"] - df["awayPregameElo"]
         df["isNeutral"] = df["neutralSite"].astype(int)
 
