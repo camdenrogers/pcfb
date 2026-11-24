@@ -5,7 +5,7 @@ import logging
 import threading
 from collections.abc import Iterable
 
-from sqlalchemy import distinct, select
+from sqlalchemy import select
 
 from .cfbd_client import CFBDClient
 from .config import current_season, settings
@@ -45,7 +45,7 @@ def refresh(full: bool = False) -> dict:
         raise RefreshInProgress("A refresh is already running")
     try:
         with SessionLocal() as session:
-            have = set(session.scalars(select(distinct(TeamSeason.season))))
+            have = set(session.scalars(select(TeamSeason.season).distinct()))
         cur = current_season()
         to_fetch = [s for s in target_seasons() if full or s == cur or s not in have]
         ingested = ingest(to_fetch)

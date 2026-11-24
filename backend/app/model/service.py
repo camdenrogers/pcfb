@@ -7,7 +7,7 @@ import threading
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import distinct, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..models import Game, ModelRun, Team, TeamRating, TeamSeason, TeamTalent
@@ -87,7 +87,7 @@ def load_season(session: Session, season: int) -> tuple[SeasonData, datetime | N
 
 
 def load_all(session: Session) -> list[tuple[SeasonData, datetime | None, str | None]]:
-    seasons = sorted(session.scalars(select(distinct(TeamSeason.season))))
+    seasons = sorted(session.scalars(select(TeamSeason.season).distinct()))
     out = []
     for s in seasons:
         loaded = load_season(session, s)
