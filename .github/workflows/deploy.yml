@@ -1,0 +1,85 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Merges deploy one at a time and are never cut off partway through an apply.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: us-central1-docker.pkg.dev/pcfb-platform/pcfb
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  build:
+    needs: checks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/595106518535/locations/global/workloadIdentityPools/github/providers/github
+          service_account: ci-deployer@pcfb-platform.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Build and push once per commit
+        run: |
+          gcloud auth print-access-token |
+            docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
+          for image in backend frontend; do
+            ref="$REGISTRY/$image:$GITHUB_SHA"
+            if docker manifest inspect "$ref" >/dev/null 2>&1; then
+              echo "$ref already exists"
+              continue
+            fi
+            docker build --platform linux/amd64 -t "$ref" "./$image"
+            docker push "$ref"
+          done
+
+  apply:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/595106518535/locations/global/workloadIdentityPools/github/providers/github
+          service_account: ci-deployer@pcfb-platform.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - run: scripts/tf.sh init -input=false -lockfile=readonly -no-color
+      - run: scripts/tf.sh plan -input=false -no-color -out=ci.tfplan
+      - name: Refuse to destroy data
+        run: |
+          set -o pipefail
+          scripts/tf.sh show -json ci.tfplan | python3 scripts/check_plan.py
+      - run: scripts/tf.sh apply -input=false -no-color ci.tfplan
+
+  deploy-test:
+    needs: apply
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/publish-env.sh test "$GITHUB_SHA"

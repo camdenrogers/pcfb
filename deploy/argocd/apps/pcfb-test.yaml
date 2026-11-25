@@ -11,10 +11,10 @@ spec:
   project: default
   source:
     repoURL: https://github.com/camdenrogers/pcfb.git
-    targetRevision: main
-    path: deploy/charts/pcfb
+    targetRevision: env/test
+    path: chart
     helm:
-      valueFiles: [values-test.yaml]
+      valueFiles: [values-test.yaml, image-tag.yaml]
   destination:
     server: https://kubernetes.default.svc
     namespace: pcfb-test

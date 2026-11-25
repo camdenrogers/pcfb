@@ -1,0 +1,49 @@
+name: Promote to prod
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-prod
+  cancel-in-progress: false
+
+jobs:
+  # Fixes the SHA before approval, so a later test deploy can't change what gets promoted.
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: sha
+        run: |
+          sha=$(git show origin/env/test:DEPLOYED_SHA)
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$sha" origin/main
+          echo "sha=$sha" >>"$GITHUB_OUTPUT"
+          {
+            echo "### Promoting to prod"
+            git log -1 --format='`%H`%n%n%s' "$sha"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+  promote:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    environment:
+      name: production
+      url: https://probablycollegefootball.com
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: scripts/publish-env.sh prod "$SHA"

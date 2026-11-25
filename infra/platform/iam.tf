@@ -44,3 +44,16 @@ resource "google_secret_manager_secret_iam_member" "external_secrets" {
   role      = "roles/secretmanager.secretAccessor"
   member    = data.google_service_account.node["server"].member
 }
+
+data "google_service_account" "ci_planner" {
+  account_id = "ci-planner"
+}
+
+# Provider credentials that plans on pull requests need. The deployer reads them as secretmanager.admin.
+resource "google_secret_manager_secret_iam_member" "planner_tokens" {
+  for_each = toset(["ci-cloudflare-api-token", "ci-neon-api-key"])
+
+  secret_id = google_secret_manager_secret.this[each.value].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = data.google_service_account.ci_planner.member
+}
