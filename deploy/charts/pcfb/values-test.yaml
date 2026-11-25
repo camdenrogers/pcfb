@@ -1,4 +1,4 @@
 env: test
 
 image:
-  tag: "UNSET"
+  tag: "25ddfaaaa7f3b41134a6136613aa79a724982222"
