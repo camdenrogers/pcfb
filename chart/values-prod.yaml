@@ -1,0 +1,5 @@
+# The image tag comes from image-tag.yaml, which CI writes on the env/prod branch.
+env: prod
+
+refresh:
+  schedule: "30 10 * * *"

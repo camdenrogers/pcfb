@@ -1,0 +1,2 @@
+# The image tag comes from image-tag.yaml, which CI writes on the env/test branch.
+env: test

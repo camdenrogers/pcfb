@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pcfb-refresh
+  labels: {{- include "pcfb.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.refresh.schedule | quote }}
+  # The app's own refresh lock only covers a single process.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: refresh
+            {{- include "pcfb.labels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+            - name: refresh
+              image: {{ include "pcfb.image" (dict "root" . "name" "backend") }}
+              command: [python, -m, app.cli, refresh]
+              env: {{- include "pcfb.backendEnv" . | nindent 16 }}
+              envFrom:
+                - secretRef: {name: pcfb-secrets}
+              securityContext: {{- include "pcfb.backendSecurity" . | nindent 16 }}
+              resources: {{- toYaml .Values.refresh.resources | nindent 16 }}
