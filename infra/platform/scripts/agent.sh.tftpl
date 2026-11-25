@@ -1,0 +1,12 @@
+write_secret k3s-join-token /etc/rancher/k3s/token
+write_secret k3s-node-password-agent /etc/rancher/node/password
+
+cat >/etc/rancher/k3s/config.yaml <<'CONFIG'
+node-name: pcfb-agent
+server: https://${server_ip}:6443
+token-file: /etc/rancher/k3s/token
+CONFIG
+
+install_k3s
+install_credential_provider
+start_k3s agent exec

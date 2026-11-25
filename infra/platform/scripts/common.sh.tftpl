@@ -1,0 +1,85 @@
+#!/bin/bash
+# Runs on every boot, so each step must be safe to repeat.
+set -euo pipefail
+
+retry() {
+  for attempt in $(seq 1 10); do
+    "$@" && return 0
+    sleep $((attempt * 3))
+  done
+  echo "failed after retries: $1" >&2
+  return 1
+}
+
+fetch_secret() {
+  local token
+  token=$(curl -sf -H 'Metadata-Flavor: Google' \
+    http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])') || return 1
+  curl -sf -H "Authorization: Bearer $token" \
+    "https://secretmanager.googleapis.com/v1/projects/${project_id}/secrets/$1/versions/latest:access" |
+    python3 -c 'import base64,json,sys; sys.stdout.write(base64.b64decode(json.load(sys.stdin)["payload"]["data"]).decode())'
+}
+
+write_secret() {
+  local tmp
+  tmp=$(mktemp)
+  retry fetch_secret "$1" >"$tmp"
+  install -D -m 0600 "$tmp" "$2"
+  rm -f "$tmp"
+}
+
+install_k3s() {
+  if ! echo "${k3s_sha256}  /usr/local/bin/k3s" | sha256sum -c --status 2>/dev/null; then
+    retry curl -fsSL -o /usr/local/bin/k3s.new "${k3s_url}"
+    echo "${k3s_sha256}  /usr/local/bin/k3s.new" | sha256sum -c -
+    chmod 0755 /usr/local/bin/k3s.new
+    mv /usr/local/bin/k3s.new /usr/local/bin/k3s
+  fi
+  ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl
+}
+
+install_credential_provider() {
+  local dir=/var/lib/rancher/credentialprovider
+  mkdir -p "$dir/bin"
+  cat >"$dir/bin/gcr-credential-provider" <<'PROVIDER'
+${credential_provider}
+PROVIDER
+  sed -i 's/REGISTRY_HOST/${registry_host}/' "$dir/bin/gcr-credential-provider"
+  chmod 0755 "$dir/bin/gcr-credential-provider"
+  cat >"$dir/config.yaml" <<'CONFIG'
+apiVersion: kubelet.config.k8s.io/v1
+kind: CredentialProviderConfig
+providers:
+  - name: gcr-credential-provider
+    matchImages: ["${registry_host}"]
+    defaultCacheDuration: 4m0s
+    apiVersion: credentialprovider.kubelet.k8s.io/v1
+CONFIG
+}
+
+start_k3s() {
+  cat >/etc/systemd/system/k3s.service <<UNIT
+[Unit]
+Description=k3s $1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=$2
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s $1
+KillMode=process
+Delegate=yes
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+UNIT
+  systemctl daemon-reload
+  systemctl restart --no-block k3s
+}

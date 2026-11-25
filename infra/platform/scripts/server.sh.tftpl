@@ -1,0 +1,28 @@
+DEVICE=/dev/disk/by-id/google-k3s-state
+MOUNT=/var/lib/rancher/k3s
+
+[ -e "$DEVICE" ] || { echo "state disk missing" >&2; exit 1; }
+# Format only a disk that reads back as blank. A read error or any existing data must stop here.
+if cmp -s -n 1048576 "$DEVICE" /dev/zero; then
+  mkfs.ext4 -m 0 "$DEVICE"
+fi
+mkdir -p "$MOUNT"
+mountpoint -q "$MOUNT" || mount -o discard,defaults "$DEVICE" "$MOUNT"
+
+write_secret k3s-join-token /etc/rancher/k3s/token
+write_secret k3s-node-password-server /etc/rancher/node/password
+
+cat >/etc/rancher/k3s/config.yaml <<'CONFIG'
+node-name: pcfb-server
+node-ip: ${server_ip}
+token-file: /etc/rancher/k3s/token
+tls-san: ["127.0.0.1", "${server_ip}"]
+write-kubeconfig-mode: "0600"
+secrets-encryption: true
+disable: [traefik, servicelb, local-storage, gateway-api-crd]
+disable-helm-controller: true
+CONFIG
+
+install_k3s
+install_credential_provider
+start_k3s server notify
