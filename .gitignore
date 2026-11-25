@@ -8,3 +8,10 @@ venv/
 node_modules/
 dist/
 .DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
