@@ -1,0 +1,36 @@
+name: wif-test
+on:
+  push:
+    branches: [wif-test]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  wif:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exchange the GitHub token and confirm a branch push cannot impersonate CI accounts
+        run: |
+          set -euo pipefail
+          AUD="//iam.googleapis.com/projects/595106518535/locations/global/workloadIdentityPools/github/providers/github"
+          JWT=$(curl -sf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https:$AUD" | jq -r .value)
+          echo "::add-mask::$JWT"
+          python3 -c 'import sys,json,base64; p=sys.argv[1].split(".")[1]; c=json.loads(base64.urlsafe_b64decode(p+"="*(-len(p)%4))); print({k:c.get(k) for k in ("sub","ref","event_name","repository_id","repository_owner_id")})' "$JWT"
+          RESP=$(curl -s https://sts.googleapis.com/v1/token \
+            --data-urlencode "audience=$AUD" \
+            --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            --data-urlencode "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
+            --data-urlencode "scope=https://www.googleapis.com/auth/cloud-platform" \
+            --data-urlencode "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            --data-urlencode "subject_token=$JWT")
+          TOKEN=$(jq -r '.access_token // empty' <<<"$RESP")
+          echo "::add-mask::$TOKEN"
+          [ -n "$TOKEN" ] || { jq '{error,error_description}' <<<"$RESP"; exit 1; }
+          echo "STS exchange: OK"
+          for sa in ci-planner ci-deployer; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+              -d '{"scope":["https://www.googleapis.com/auth/cloud-platform"]}' \
+              "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$sa@pcfb-platform.iam.gserviceaccount.com:generateAccessToken")
+            echo "$sa impersonation from branch push: HTTP $CODE (want 403)"
+            [ "$CODE" = 403 ]
+          done
