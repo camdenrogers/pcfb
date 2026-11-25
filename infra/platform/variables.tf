@@ -53,5 +53,5 @@ variable "neon_org_id" {
 variable "public_envs" {
   description = "Environments that get a tunnel route and DNS record."
   type        = set(string)
-  default     = ["test"]
+  default     = ["test", "prod"]
 }
