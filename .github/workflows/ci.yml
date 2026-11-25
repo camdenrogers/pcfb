@@ -35,6 +35,8 @@ jobs:
         with:
           terraform_version: 1.17.2
           terraform_wrapper: false
+      - name: Mask provider tokens
+        run: scripts/mask-tokens.sh
       - name: Plan
         id: plan
         run: |
@@ -44,12 +46,13 @@ jobs:
           code=$?
           cat plan.log
           if [ $code -eq 0 ]; then
+            scripts/tf.sh show -no-color ci.tfplan >plan.txt
             scripts/tf.sh show -json ci.tfplan | python3 scripts/check_plan.py
             code=$?
           fi
           exit $code
       - name: Comment
-        if: always() && hashFiles('plan.log') != ''
+        if: always() && steps.plan.outcome != 'skipped'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -60,16 +63,22 @@ jobs:
             echo "$marker"
             echo "### Terraform plan for \`infra/platform\`: $OUTCOME"
             echo
-            grep -E '^(Plan:|No changes)' plan.log || true
-            echo
-            echo '<details><summary>Full output</summary>'
-            echo
-            echo '```'
-            head -c 55000 plan.log
-            echo
-            echo '```'
-            echo '</details>'
+            if [ -s plan.txt ]; then
+              grep -E '^(Plan:|No changes)' plan.txt || true
+              echo
+              echo '<details><summary>Full plan</summary>'
+              echo
+              echo '```'
+              head -c 55000 plan.txt
+              echo
+              echo '```'
+              echo '</details>'
+            else
+              echo 'No plan was produced. See the job log.'
+            fi
           } >comment.md
+          # The comment is public, so refuse to post it if it contains either token.
+          scripts/mask-tokens.sh --check comment.md
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -1)
           if [ -n "$id" ]; then

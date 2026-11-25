@@ -67,6 +67,8 @@ jobs:
         with:
           terraform_version: 1.17.2
           terraform_wrapper: false
+      - name: Mask provider tokens
+        run: scripts/mask-tokens.sh
       - run: scripts/tf.sh init -input=false -lockfile=readonly -no-color
       - run: scripts/tf.sh plan -input=false -no-color -out=ci.tfplan
       - name: Refuse to destroy data

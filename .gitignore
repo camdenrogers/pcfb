@@ -18,5 +18,6 @@ dist/
 
 # CI output
 plan.log
+plan.txt
 init.log
 comment.md
