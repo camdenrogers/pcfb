@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pcfb-test
+  namespace: argocd
+  labels: {app: pcfb, env: test}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/camdenrogers/pcfb.git
+    targetRevision: main
+    path: deploy/charts/pcfb
+    helm:
+      valueFiles: [values-test.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pcfb-test
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, SkipDryRunOnMissingResource=true]
+    retry:
+      limit: 10
+      backoff: {duration: 15s, factor: 2, maxDuration: 3m}

@@ -1,0 +1,7 @@
+env: prod
+
+image:
+  tag: "UNSET"
+
+refresh:
+  schedule: "30 10 * * *"

@@ -27,3 +27,20 @@ resource "google_artifact_registry_repository_iam_member" "node_pull" {
   role       = "roles/artifactregistry.reader"
   member     = each.value.member
 }
+
+# External Secrets runs only on the server node and uses its attached account, so no key is needed.
+# The CI tokens are left out on purpose.
+resource "google_secret_manager_secret_iam_member" "external_secrets" {
+  for_each = toset([
+    "cfbd-api-key",
+    "cloudflare-tunnel-token",
+    "admin-token-test",
+    "admin-token-prod",
+    "database-url-test",
+    "database-url-prod",
+  ])
+
+  secret_id = google_secret_manager_secret.this[each.value].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = data.google_service_account.node["server"].member
+}

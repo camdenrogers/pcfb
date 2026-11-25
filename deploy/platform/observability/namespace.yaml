@@ -1,0 +1,6 @@
+# TODO: OpenTelemetry Collector DaemonSet (node and pod telemetry) and a gateway Deployment that exports it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels: {app: pcfb, env: shared}

@@ -29,3 +29,29 @@ variable "k3s_sha256" {
   type        = string
   default     = "265b3ee6a3198ef14033c63ef46cbb32370d83795199fb6d1b01f21575eddbda"
 }
+
+variable "domain" {
+  type    = string
+  default = "probablycollegefootball.com"
+}
+
+variable "cloudflare_account_id" {
+  type    = string
+  default = "dfcda9769fc858da77ba57cd920bd74d"
+}
+
+variable "cloudflare_zone_id" {
+  type    = string
+  default = "694402affe6f3d219f230259a2aa5c0c"
+}
+
+variable "neon_org_id" {
+  type    = string
+  default = "org-cold-thunder-68765830"
+}
+
+variable "public_envs" {
+  description = "Environments that get a tunnel route and DNS record."
+  type        = set(string)
+  default     = ["test"]
+}
