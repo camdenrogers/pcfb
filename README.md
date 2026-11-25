@@ -10,7 +10,7 @@ A full-stack app that fits its own power-rating model on [CollegeFootballData.co
 | Database | PostgreSQL 16 |
 | Frontend | Node 22 · React 18 · Vite (served by nginx in Docker) |
 | Data | CollegeFootballData.com REST API |
-| CI | GitHub Actions (tests, lint, frontend build, Docker build) |
+| CI/CD | GitHub Actions, Terraform, ArgoCD on k3s ([docs/platform.md](docs/platform.md)) |
 
 ## Quick start (Docker)
 
@@ -94,7 +94,7 @@ Ratings are solved by **weighted ridge regression toward a preseason prior** (`b
 
 **Prediction.** For a neutral site, projected points are `mu + off_A − def_B` and `mu + off_B − def_A`. The spread is the difference, rounded to the nearest half point. Win probability is `Φ(margin / σ)`, where σ is the RMSE from the backtest.
 
-**Evaluation.** `backtest` replays the last two complete seasons week by week, predicting each week using only games played before it. It reports MAE, RMSE, bias, and straight-up accuracy on FBS-vs-FBS games. `tune` grid-searches the main hyperparameters against walk-forward MAE.
+**Evaluation.** `backtest` replays the two most recent seasons with games, including one in progress, week by week, predicting each week using only games played before it. It reports MAE, RMSE, bias, and straight-up accuracy on FBS-vs-FBS games. `tune` grid-searches the main hyperparameters against walk-forward MAE.
 
 Ratings shown in the UI are centered on the FBS average, so a **+20 net rating** means "20 points better than an average FBS team on a neutral field."
 
@@ -116,7 +116,10 @@ backend/
 frontend/
   src/App.jsx, components/  single-page React UI
 docker-compose.yml     db + backend + frontend (nginx proxies /api)
-.github/workflows/ci.yml
+infra/                 Terraform: bootstrap, platform, cluster
+deploy/                Helm chart and ArgoCD apps
+scripts/               platform helper scripts
+.github/workflows/     checks, plan, deploy, prod promotion
 ```
 
 ### Schema
