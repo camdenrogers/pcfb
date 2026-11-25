@@ -1,4 +1,2 @@
+# The image tag comes from image-tag.yaml, which CI writes on the env/test branch.
 env: test
-
-image:
-  tag: "25ddfaaaa7f3b41134a6136613aa79a724982222"

@@ -15,3 +15,9 @@ dist/
 *.tfstate.*
 *.tfplan
 *.auto.tfvars
+
+# CI output
+plan.log
+plan.txt
+init.log
+comment.md
